@@ -1,0 +1,12 @@
+node_modules/
+build/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.DS_Store
+credentials/
