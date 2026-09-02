@@ -1,5 +1,7 @@
 variable "k8s_version" {
-  default = "1.25"
+  # EKS 1.25 is retired in current AWS accounts; keep the cluster on a
+  # currently supported version that matches the CI kubectl client.
+  default = "1.32"
 }
 
 variable "enable_private" {
