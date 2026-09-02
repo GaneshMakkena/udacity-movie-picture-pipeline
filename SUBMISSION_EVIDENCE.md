@@ -49,6 +49,10 @@ The reviewer-facing artifacts are committed under `evidence/`:
 - `evidence/frontend-eks.jpeg` — frontend movie list open through its EKS LoadBalancer DNS, with the URL visible.
 - `evidence/backend-eks.jpeg` — backend `/movies` JSON response open through its EKS LoadBalancer URL.
 - `evidence/github-actions-success.jpeg` — public GitHub Actions page showing successful workflow results.
+- `evidence/kubectl-get-all-screenshot.jpeg` — reviewer screenshot of the captured `kubectl get all -o wide` output.
+- `evidence/kubectl-describe-frontend-screenshot.jpeg` — reviewer screenshot of the captured frontend deployment description.
+- `evidence/kubectl-describe-backend-screenshot.jpeg` — reviewer screenshot of the captured backend deployment description.
+- `evidence/ecr-images-screenshot.jpeg` — reviewer screenshot of the captured latest frontend and backend ECR image details.
 - `evidence/kubectl-get-all.txt` — running frontend/backend pods, Services, Deployments, and ReplicaSets.
 - `evidence/kubectl-describe-frontend.txt` — frontend deployment description and SHA-tagged image.
 - `evidence/kubectl-describe-backend.txt` — backend deployment description and SHA-tagged image.
@@ -59,3 +63,10 @@ The reviewer-facing artifacts are committed under `evidence/`:
 - `evidence/frontend.html` — captured frontend HTML from the deployed LoadBalancer.
 
 No AWS credentials, session tokens, or other secret values are included in the repository, evidence files, screenshots, or this document. Temporary generated dependencies, Terraform state, and local caches remain excluded by the repository ignore rules.
+
+## Reviewer checklist coverage
+
+- Missing GitHub link: resolved by the public repository link above; the published tree includes the complete project and all four required workflow files.
+- Missing application URLs: resolved by the frontend and backend EKS URLs above, with browser screenshots captured before teardown.
+- Four workflow runs: each required CI/CD workflow has a successful public run linked above; the Actions screenshot is filtered to successful results.
+- Infrastructure teardown: all runtime, Kubernetes, and ECR evidence was captured and committed before AWS destruction began. The GitHub repository, commit history, workflow runs, screenshots, and text evidence remain available after teardown.
