@@ -1,0 +1,94 @@
+name: Deployment Evidence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME: cluster
+
+jobs:
+  verify:
+    name: Verify EKS deployment and collect evidence
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.32.0
+
+      - name: Configure kubectl for EKS
+        run: aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}"
+
+      - name: Wait for application deployments
+        run: |
+          kubectl rollout status deployment/backend --timeout=5m
+          kubectl rollout status deployment/frontend --timeout=5m
+
+      - name: Collect deployment evidence
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+
+          kubectl get all -o wide | tee evidence/kubectl-get-all.txt
+          kubectl describe deployment frontend | tee evidence/kubectl-describe-frontend.txt
+          kubectl describe deployment backend | tee evidence/kubectl-describe-backend.txt
+
+          for service in backend frontend; do
+            for attempt in $(seq 1 30); do
+              host="$(kubectl get service "${service}" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
+              if [ -n "${host}" ]; then
+                printf '%s=%s\\n' "${service}" "${host}" >> evidence/endpoints.txt
+                break
+              fi
+              if [ "${attempt}" -eq 30 ]; then
+                echo "Timed out waiting for ${service} LoadBalancer hostname" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+          done
+
+          backend_host="$(awk -F= '$1 == "backend" {print $2}' evidence/endpoints.txt)"
+          frontend_host="$(awk -F= '$1 == "frontend" {print $2}' evidence/endpoints.txt)"
+          printf 'backend_url=http://%s\\nfrontend_url=http://%s\\n' "${backend_host}" "${frontend_host}" > evidence/endpoints.txt.tmp
+          mv evidence/endpoints.txt.tmp evidence/endpoints.txt
+
+          curl --fail --show-error --retry 5 --retry-delay 5 "http://${backend_host}/movies" \
+            | jq . | tee evidence/backend-movies.json
+          curl --fail --show-error --retry 5 --retry-delay 5 "http://${frontend_host}/" \
+            -o evidence/frontend.html
+
+          {
+            echo 'Deployment images:'
+            kubectl get deployment frontend backend -o jsonpath='{range .items[*]}{.metadata.name}{"="}{.spec.template.spec.containers[0].image}{"\\n"}{end}'
+          } | tee evidence/deployed-images.txt
+
+          {
+            echo 'Frontend ECR images:'
+            aws ecr describe-images --repository-name frontend --region "${AWS_REGION}" \
+              --query 'imageDetails[?imageTags!=null]|sort_by(@,&imagePushedAt)[-10:]' --output json
+            echo 'Backend ECR images:'
+            aws ecr describe-images --repository-name backend --region "${AWS_REGION}" \
+              --query 'imageDetails[?imageTags!=null]|sort_by(@,&imagePushedAt)[-10:]' --output json
+          } | tee evidence/ecr-images.txt
+
+      - name: Upload deployment evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-evidence
+          path: evidence/
+          if-no-files-found: error
