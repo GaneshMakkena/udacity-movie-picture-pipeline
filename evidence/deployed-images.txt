@@ -1,0 +1,3 @@
+Deployment images:
+frontend=026585845151.dkr.ecr.us-east-1.amazonaws.com/frontend:b68c63fadf332e7ff22e7afb3c688981a32a4026
+backend=026585845151.dkr.ecr.us-east-1.amazonaws.com/backend:b68c63fadf332e7ff22e7afb3c688981a32a4026
