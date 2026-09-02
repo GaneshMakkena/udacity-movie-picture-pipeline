@@ -51,7 +51,7 @@ jobs:
             for attempt in $(seq 1 30); do
               host="$(kubectl get service "${service}" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')"
               if [ -n "${host}" ]; then
-                printf '%s=%s\\n' "${service}" "${host}" >> evidence/endpoints.txt
+                printf '%s=%s\n' "${service}" "${host}" >> evidence/endpoints.txt
                 break
               fi
               if [ "${attempt}" -eq 30 ]; then
@@ -64,7 +64,7 @@ jobs:
 
           backend_host="$(awk -F= '$1 == "backend" {print $2}' evidence/endpoints.txt)"
           frontend_host="$(awk -F= '$1 == "frontend" {print $2}' evidence/endpoints.txt)"
-          printf 'backend_url=http://%s\\nfrontend_url=http://%s\\n' "${backend_host}" "${frontend_host}" > evidence/endpoints.txt.tmp
+          printf 'backend_url=http://%s\nfrontend_url=http://%s\n' "${backend_host}" "${frontend_host}" > evidence/endpoints.txt.tmp
           mv evidence/endpoints.txt.tmp evidence/endpoints.txt
 
           curl --fail --show-error --retry 5 --retry-delay 5 "http://${backend_host}/movies" \
@@ -74,7 +74,7 @@ jobs:
 
           {
             echo 'Deployment images:'
-            kubectl get deployment frontend backend -o jsonpath='{range .items[*]}{.metadata.name}{"="}{.spec.template.spec.containers[0].image}{"\\n"}{end}'
+            kubectl get deployment frontend backend -o jsonpath='{range .items[*]}{.metadata.name}{"="}{.spec.template.spec.containers[0].image}{"\n"}{end}'
           } | tee evidence/deployed-images.txt
 
           {
